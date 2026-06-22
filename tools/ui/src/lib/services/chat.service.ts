@@ -892,6 +892,32 @@ export class ChatService {
 	): Promise<ApiChatMessageData> {
 		// Handle tool result messages (role: 'tool')
 		if (message.role === MessageRole.TOOL && message.toolCallId) {
+			const imageFiles = (message.extra ?? []).filter(
+				(extra: DatabaseMessageExtra): extra is DatabaseMessageExtraImageFile =>
+					extra.type === AttachmentType.IMAGE
+			);
+
+			if (imageFiles.length > 0) {
+				const contentParts: ApiChatMessageContentPart[] = [];
+
+				if (message.content) {
+					contentParts.push({ type: ContentPartType.TEXT, text: message.content });
+				}
+
+				for (const image of imageFiles) {
+					contentParts.push({
+						type: ContentPartType.IMAGE_URL,
+						image_url: { url: image.base64Url }
+					});
+				}
+
+				return {
+					role: MessageRole.TOOL,
+					content: contentParts,
+					tool_call_id: message.toolCallId
+				};
+			}
+
 			return {
 				role: MessageRole.TOOL,
 				content: message.content,

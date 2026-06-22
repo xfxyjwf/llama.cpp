@@ -122,7 +122,7 @@ function toAgenticMessages(messages: ApiChatMessageData[]): AgenticMessage[] {
 			return {
 				role: MessageRole.TOOL,
 				tool_call_id: message.tool_call_id,
-				content: typeof message.content === 'string' ? message.content : ''
+				content: message.content
 			} satisfies AgenticMessage;
 		}
 		return {
@@ -840,9 +840,9 @@ class AgenticStore {
 						cleanedResult,
 						attachments.length > 0 ? attachments : undefined
 					);
-				}
-
-				if (attachments.length > 0 && toolResultMessage) {
+				} else if (attachments.length > 0 && toolResultMessage) {
+					// Only call onAttachments when createToolResultMessage is not available,
+					// otherwise extras are already persisted by createToolResultMessage.
 					onAttachments?.(toolResultMessage.id, attachments);
 				}
 
