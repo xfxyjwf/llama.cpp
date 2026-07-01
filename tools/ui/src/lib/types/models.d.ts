@@ -1,4 +1,4 @@
-import type { ApiModelDataEntry, ApiModelDetails } from '$lib/types/api';
+import type { ApiModelDataEntry, ApiModelDetails, ApiModelPricing } from '$lib/types/api';
 
 export interface ModelModalities {
 	vision: boolean;
@@ -15,6 +15,7 @@ export interface ModelOption {
 	modalities?: ModelModalities;
 	details?: ApiModelDetails['details'];
 	meta?: ApiModelDataEntry['meta'];
+	pricing?: ApiModelPricing | null;
 	parsedId?: ParsedModelId;
 	aliases?: string[];
 	tags?: string[];

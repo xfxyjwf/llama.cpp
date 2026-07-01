@@ -1153,7 +1153,7 @@ class ChatStore {
 		}
 	}
 
-	async regenerateMessageWithBranching(messageId: string, modelOverride?: string): Promise<void> {
+	async regenerateMessageWithBranching(messageId: string): Promise<void> {
 		const activeConv = conversationsStore.activeConversation;
 		if (!activeConv || this.isChatLoadingInternal(activeConv.id)) return;
 		this.cancelPreEncode();
@@ -1188,14 +1188,9 @@ class ChatStore {
 				parentMessage.id,
 				false
 			) as DatabaseMessage[];
-			const modelToUse = modelOverride || msg.model || undefined;
-			await this.streamChatCompletion(
-				conversationPath,
-				newAssistantMessage,
-				undefined,
-				undefined,
-				modelToUse
-			);
+			// Retry always uses the currently selected model (and reasoning effort),
+			// resolved inside streamChatCompletion when no explicit override is given.
+			await this.streamChatCompletion(conversationPath, newAssistantMessage);
 		} catch (error) {
 			if (!isAbortError(error))
 				console.error('Failed to regenerate message with branching:', error);

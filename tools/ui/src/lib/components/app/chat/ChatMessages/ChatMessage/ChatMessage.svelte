@@ -246,8 +246,8 @@
 		}, 0);
 	}
 
-	function handleRegenerate(modelOverride?: string) {
-		chatActions.regenerateWithBranching(message, modelOverride);
+	function handleRegenerate() {
+		chatActions.regenerateWithBranching(message);
 	}
 
 	function handleContinue() {

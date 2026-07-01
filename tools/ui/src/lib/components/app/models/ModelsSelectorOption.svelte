@@ -6,7 +6,6 @@
 		Info,
 		Loader2,
 		Power,
-		PowerOff,
 		RotateCw
 	} from '@lucide/svelte';
 	import { ActionIcon, ModelId } from '$lib/components/app';
@@ -50,6 +49,15 @@
 		(serverStatus === ServerModelStatus.LOADED || isSleeping) && !isOperationInProgress
 	);
 	let isLoading = $derived(serverStatus === ServerModelStatus.LOADING || isOperationInProgress);
+
+	// Compact input/output price per million tokens, e.g. "$0.09/$0.34". Rendered
+	// only when the provider advertised pricing; a missing side shows "$?".
+	let pricingLabel = $derived.by(() => {
+		const p = option.pricing;
+		if (!p || (p.inputPerM == null && p.outputPerM == null)) return null;
+		const fmt = (v: number | undefined) => (typeof v === 'number' ? `$${v.toFixed(2)}` : '$?');
+		return `${fmt(p.inputPerM)}/${fmt(p.outputPerM)}`;
+	});
 </script>
 
 <div
@@ -74,6 +82,12 @@
 		tags={option.tags}
 		class="flex-1"
 	/>
+
+	{#if pricingLabel}
+		<span class="shrink-0 text-xs text-muted-foreground tabular-nums" title="Input/output price per million tokens">
+			{pricingLabel}
+		</span>
+	{/if}
 
 	<div class="flex shrink-0 items-center gap-1">
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -134,40 +148,15 @@
 				</div>
 			</div>
 		{:else if isSleeping}
+			<!-- Proxy backend: models are remote and always available; there is no
+			     unload lifecycle, so no unload control is shown (a real unload would
+			     poll forever waiting for a status the server never reports). -->
 			<div class="flex w-4 [@media(pointer:coarse)]:w-auto items-center justify-center">
-				<span
-					class="h-2 w-2 rounded-full bg-orange-400 group-hover:hidden [@media(pointer:coarse)]:hidden"
-				></span>
-
-				<div class="hidden group-hover:flex [@media(pointer:coarse)]:flex">
-					<ActionIcon
-						iconSize="h-2.5 w-2.5"
-						icon={PowerOff}
-						tooltip="Unload model"
-						class="h-3 w-3 text-red-500 hover:text-red-600 [@media(pointer:coarse)]:text-amber-500 [@media(pointer:coarse)]:hover:text-amber-600"
-						onclick={(e) => {
-							e?.stopPropagation();
-							modelsStore.unloadModel(option.model);
-						}}
-					/>
-				</div>
+				<span class="h-2 w-2 rounded-full bg-orange-400"></span>
 			</div>
 		{:else if isLoaded}
 			<div class="flex w-4 [@media(pointer:coarse)]:w-auto items-center justify-center">
-				<span
-					class="h-2 w-2 rounded-full bg-green-500 group-hover:hidden [@media(pointer:coarse)]:hidden"
-				></span>
-
-				<div class="hidden group-hover:flex [@media(pointer:coarse)]:flex">
-					<ActionIcon
-						iconSize="h-2.5 w-2.5"
-						icon={PowerOff}
-						tooltip="Unload model"
-						class="h-3 w-3 text-red-500 hover:text-red-600 [@media(pointer:coarse)]:text-green-500 [@media(pointer:coarse)]:hover:text-green-600"
-						onclick={() => modelsStore.unloadModel(option.model)}
-						stopPropagationOnClick
-					/>
-				</div>
+				<span class="h-2 w-2 rounded-full bg-green-500"></span>
 			</div>
 		{:else}
 			<div class="flex w-4 [@media(pointer:coarse)]:w-auto items-center justify-center">

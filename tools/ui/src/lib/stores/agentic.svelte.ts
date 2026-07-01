@@ -161,12 +161,13 @@ class AgenticStore {
 	}
 
 	getSession(conversationId: string): AgenticSession {
-		let session = this._sessions.get(conversationId);
-		if (!session) {
-			session = createDefaultSession();
-			this._sessions.set(conversationId, session);
-		}
-		return session;
+		// Read-only: must NOT write to the reactive _sessions map here. The status
+		// accessors (isRunning/lastError/...) call this from within $derived/template
+		// contexts; persisting a lazily-created session there mutates reactive state
+		// during a read and throws state_unsafe_mutation. Real writes go through
+		// updateSession, which sets the map itself, so returning a transient default
+		// is sufficient.
+		return this._sessions.get(conversationId) ?? createDefaultSession();
 	}
 
 	private updateSession(conversationId: string, update: Partial<AgenticSession>): void {

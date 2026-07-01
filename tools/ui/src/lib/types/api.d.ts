@@ -94,6 +94,14 @@ export interface ApiModelDataEntry {
 	tags?: string[];
 	/** Legacy meta field (may be present in older responses) */
 	meta?: Record<string, unknown> | null;
+	/** Per-model USD pricing per million tokens (myllmui proxy extension) */
+	pricing?: ApiModelPricing | null;
+}
+
+/** USD price per million tokens for a model's input/output (may be one-sided). */
+export interface ApiModelPricing {
+	inputPerM?: number;
+	outputPerM?: number;
 }
 
 export interface ApiModelDetails {
@@ -198,6 +206,19 @@ export interface ApiLlamaCppServerProps {
 		audio: boolean;
 		video: boolean;
 	};
+	/**
+	 * Reasoning capability for this model, surfaced by the myllmui proxy (upstream
+	 * llama.cpp does not send this — there it is inferred from `chat_template`).
+	 * `supported` gates the reasoning-effort control; `mandatory` means the model
+	 * always reasons and cannot be turned off (the UI omits the "Off" entry);
+	 * `efforts` lists the accepted tiers verbatim from the provider. An empty
+	 * `efforts` array means unconstrained — the UI offers a plain on/off.
+	 */
+	reasoning?: {
+		supported: boolean;
+		mandatory: boolean;
+		efforts: string[];
+	};
 	chat_template: string;
 	bos_token: string;
 	eos_token: string;
@@ -222,6 +243,7 @@ export interface ApiChatCompletionRequest {
 	tools?: ApiChatCompletionTool[];
 	// Reasoning parameters
 	reasoning_format?: string;
+	reasoning_effort?: string;
 	// Generation parameters
 	temperature?: number;
 	max_tokens?: number;

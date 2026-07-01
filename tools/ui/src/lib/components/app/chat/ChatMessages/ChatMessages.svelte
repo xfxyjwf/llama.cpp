@@ -90,9 +90,9 @@
 			refreshAllMessages();
 		},
 
-		regenerateWithBranching: async (message: DatabaseMessage, modelOverride?: string) => {
+		regenerateWithBranching: async (message: DatabaseMessage) => {
 			onUserAction?.();
-			await chatStore.regenerateMessageWithBranching(message.id, modelOverride);
+			await chatStore.regenerateMessageWithBranching(message.id);
 			refreshAllMessages();
 		},
 

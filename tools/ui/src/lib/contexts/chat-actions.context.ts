@@ -20,7 +20,7 @@ export interface ChatActionsContext {
 		newContent: string,
 		newExtras?: DatabaseMessageExtra[]
 	) => void;
-	regenerateWithBranching: (message: DatabaseMessage, modelOverride?: string) => void;
+	regenerateWithBranching: (message: DatabaseMessage) => void;
 	continueAssistantMessage: (message: DatabaseMessage) => void;
 	forkConversation: (
 		message: DatabaseMessage,

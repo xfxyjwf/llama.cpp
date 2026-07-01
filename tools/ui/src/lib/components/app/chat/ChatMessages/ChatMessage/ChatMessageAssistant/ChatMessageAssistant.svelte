@@ -4,8 +4,7 @@
 		ChatMessageActionIcons,
 		ChatMessageEditForm,
 		ChatMessageStatistics,
-		ModelBadge,
-		ModelsSelectorDropdown
+		ModelBadge
 	} from '$lib/components/app';
 	import { getMessageEditContext } from '$lib/contexts';
 	import { useProcessingState } from '$lib/hooks/use-processing-state.svelte';
@@ -17,9 +16,6 @@
 	import { fade } from 'svelte/transition';
 	import { MessageRole, ChatMessageStatsView } from '$lib/enums';
 	import { config } from '$lib/stores/settings.svelte';
-	import { isRouterMode } from '$lib/stores/server.svelte';
-	import { modelsStore } from '$lib/stores/models.svelte';
-	import { ServerModelStatus } from '$lib/enums';
 
 	import { hasAgenticContent } from '$lib/utils';
 
@@ -42,7 +38,7 @@
 		onEdit?: () => void;
 		onForkConversation?: (options: { name: string; includeAttachments: boolean }) => void;
 		onNavigateToSibling?: (siblingId: string) => void;
-		onRegenerate: (modelOverride?: string) => void;
+		onRegenerate: () => void;
 		onShowDeleteDialogChange: (show: boolean) => void;
 		showDeleteDialog: boolean;
 		siblingInfo?: ChatMessageSiblingInfo | null;
@@ -77,7 +73,6 @@
 	const processingState = useProcessingState();
 
 	let currentConfig = $derived(config());
-	let isRouter = $derived(isRouterMode());
 	let showRawOutput = $state(false);
 
 	let rawOutputContent = $derived.by(() => {
@@ -266,24 +261,7 @@
 				bind:this={statsContainerEl}
 				class="inline-flex flex-wrap items-start gap-2 text-xs text-muted-foreground"
 			>
-				{#if isRouter}
-					<ModelsSelectorDropdown
-						currentModel={displayedModel}
-						disabled={isLoading()}
-						onModelChange={async (modelId: string, modelName: string) => {
-							const status = modelsStore.getModelStatus(modelId);
-
-							if (status !== ServerModelStatus.LOADED) {
-								await modelsStore.loadModel(modelId);
-							}
-
-							onRegenerate(modelName);
-							return true;
-						}}
-					/>
-				{:else}
-					<ModelBadge model={displayedModel || undefined} onclick={handleCopyModel} />
-				{/if}
+				<ModelBadge model={displayedModel || undefined} onclick={handleCopyModel} />
 
 				{#if currentConfig.showMessageStats && message.timings && message.timings.predicted_n && message.timings.predicted_ms}
 					{@const agentic = message.timings.agentic}

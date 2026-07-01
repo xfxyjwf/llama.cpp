@@ -257,6 +257,13 @@ export class ChatService {
 			requestBody.thinking_budget_tokens = reasoningBudgetTokens;
 		}
 
+		// Selected effort tier, verbatim (e.g. "high", "xhigh"), so a proxy can map
+		// it to a provider that takes a named reasoning effort. Native llama.cpp
+		// ignores this and uses the fields above.
+		if (enableThinking && reasoningEffort) {
+			requestBody.reasoning_effort = reasoningEffort;
+		}
+
 		// arms the budget sampler so reasoning can be ended at runtime via the control endpoint
 		requestBody.reasoning_control = true;
 

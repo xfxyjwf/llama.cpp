@@ -56,6 +56,55 @@
 		return supportsThinking() || modelSupportsThinkingFromMessages;
 	});
 
+	// Effort tiers the current model accepts, from the proxy's /props reasoning
+	// metadata. Tri-state: null = native llama.cpp (no proxy metadata), [] = remote
+	// but no enumerated tiers, [...] = the exact provider tiers.
+	let supportedEfforts = $derived.by(() => {
+		loadedModelIds();
+		propsCacheVersion();
+
+		if (!isRouterMode()) {
+			return modelsStore.getModelReasoningEfforts('');
+		}
+		const modelId = modelsStore.selectedModelName || conversationModel;
+		return modelId ? modelsStore.getModelReasoningEfforts(modelId) : null;
+	});
+
+	// When reasoning is mandatory the model always reasons, so the "Off" entry is
+	// omitted from the provider-driven menu.
+	let reasoningMandatory = $derived.by(() => {
+		loadedModelIds();
+		propsCacheVersion();
+
+		if (!isRouterMode()) {
+			return modelsStore.getModelReasoningMandatory('');
+		}
+		const modelId = modelsStore.selectedModelName || conversationModel;
+		return modelId ? modelsStore.getModelReasoningMandatory(modelId) : false;
+	});
+
+	const OFF_LEVEL: ReasoningEffortLevel = { value: 'off', label: 'Off', isOff: true };
+
+	// Build the menu from the provider's supported efforts, shown verbatim (their
+	// labels, their order), with an "Off" entry appended unless reasoning is
+	// mandatory:
+	//   - null → native llama.cpp: use its built-in low/medium/high/max levels.
+	//   - []   → reasoning-capable but no tiers advertised: plain on (+ off).
+	//   - [...] → one entry per provider tier, label === the provider's own token.
+	let effortLevels = $derived.by<ReasoningEffortLevel[]>(() => {
+		if (supportedEfforts === null) {
+			return REASONING_EFFORT_LEVELS;
+		}
+		const off = reasoningMandatory ? [] : [OFF_LEVEL];
+		// A provider "none" tier just disables reasoning, which the "Off" entry
+		// already represents; drop it so the menu doesn't show both.
+		const tiers = supportedEfforts.filter((value) => value.toLowerCase() !== 'none');
+		if (tiers.length === 0) {
+			return [{ value: 'on', label: 'On' }, ...off];
+		}
+		return [...tiers.map((value) => ({ value, label: value })), ...off];
+	});
+
 	// Check if current item is selected
 	function isSelected(item: ReasoningEffortLevel): boolean {
 		if (item.isOff) {
@@ -105,7 +154,7 @@
 		>
 			<div class="mb-2 px-2.5 text-sm font-medium">Reasoning effort</div>
 
-			{#each REASONING_EFFORT_LEVELS as level (level.value)}
+			{#each effortLevels as level (level.value)}
 				<button
 					type="button"
 					class="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent"
@@ -118,9 +167,9 @@
 						<div class="h-4 w-4 shrink-0"></div>
 					{/if}
 
-					<span class="flex-1">{level.label}</span>
+					<span class="flex-1 capitalize">{level.label}</span>
 
-					{#if !level.isOff}
+					{#if !level.isOff && REASONING_EFFORT_TOKENS[level.value] !== undefined}
 						<span class="text-[11px] text-muted-foreground opacity-60">
 							{REASONING_EFFORT_TOKENS[level.value] === -1
 								? 'Unlimited'

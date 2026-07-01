@@ -18,6 +18,30 @@ import {
 import { conversationsStore } from '$lib/stores/conversations.svelte';
 
 /**
+ * Whether a model supports thinking, given its `/props`. Prefers the myllmui
+ * proxy's explicit `reasoning.supported` flag (our models are remote, so there is
+ * no real chat_template to inspect); falls back to chat_template heuristics for a
+ * genuine llama.cpp server that omits the field.
+ */
+function reasoningSupportFromProps(props: ApiLlamaCppServerProps | null): boolean {
+	const explicit = props?.reasoning?.supported;
+	if (typeof explicit === 'boolean') return explicit;
+	return detectThinkingSupport(props?.chat_template ?? '');
+}
+
+/** Debug variant of {@link reasoningSupportFromProps} with a human-readable reason. */
+function reasoningSupportDetailsFromProps(props: ApiLlamaCppServerProps | null): {
+	supported: boolean;
+	reason: string;
+} {
+	const explicit = props?.reasoning?.supported;
+	if (typeof explicit === 'boolean') {
+		return { supported: explicit, reason: explicit ? 'Provider reasoning metadata' : 'Provider reports no reasoning' };
+	}
+	return detectThinkingSupportWithReason(props?.chat_template ?? '');
+}
+
+/**
  * modelsStore - Reactive store for model management in both MODEL and ROUTER modes.
  *
  * **Architecture & Relationships:**
@@ -236,7 +260,7 @@ class ModelsStore {
 		const modelId = this.selectedModelName;
 		if (!modelId) {
 			if (!isRouterMode()) {
-				return detectThinkingSupport(serverStore.props?.chat_template ?? '');
+				return reasoningSupportFromProps(serverStore.props);
 			}
 			return false;
 		}
@@ -244,8 +268,7 @@ class ModelsStore {
 		if (isRouterMode() && !this.modelPropsCache.get(modelId)) {
 			this.fetchModelProps(modelId);
 		}
-		const props = this.getModelProps(modelId);
-		return detectThinkingSupport(props?.chat_template ?? '');
+		return reasoningSupportFromProps(this.getModelProps(modelId));
 	}
 
 	/**
@@ -259,8 +282,40 @@ class ModelsStore {
 			this.fetchModelProps(modelId);
 		}
 
-		const props = this.getModelProps(modelId);
-		return detectThinkingSupport(props?.chat_template ?? '');
+		return reasoningSupportFromProps(this.getModelProps(modelId));
+	}
+
+	/**
+	 * Effort tiers this model accepts, straight from the proxy's `/props` reasoning
+	 * metadata (verbatim provider labels, e.g. "xhigh"). Tri-state:
+	 *   - `null`  → no proxy reasoning metadata (a native llama.cpp server); caller
+	 *               should use the built-in llama.cpp effort levels.
+	 *   - `[]`    → reasoning-capable but the provider enumerated no tiers; caller
+	 *               should offer a plain on/off.
+	 *   - `[...]` → the exact tiers to display, in provider order.
+	 */
+	getModelReasoningEfforts(modelId: string): string[] | null {
+		let props: ApiLlamaCppServerProps | null;
+		if (isRouterMode()) {
+			if (modelId && !this.modelPropsCache.get(modelId)) {
+				this.fetchModelProps(modelId);
+			}
+			props = this.getModelProps(modelId);
+		} else {
+			props = serverStore.props;
+		}
+		const reasoning = props?.reasoning;
+		if (!reasoning) return null;
+		return Array.isArray(reasoning.efforts) ? reasoning.efforts : [];
+	}
+
+	/**
+	 * Whether this model's reasoning is mandatory (always on, cannot be disabled),
+	 * per the proxy's `/props` reasoning metadata.
+	 */
+	getModelReasoningMandatory(modelId: string): boolean {
+		const props = isRouterMode() ? this.getModelProps(modelId) : serverStore.props;
+		return props?.reasoning?.mandatory === true;
 	}
 
 	/**
@@ -270,15 +325,14 @@ class ModelsStore {
 		const modelId = this.selectedModelName;
 		if (!modelId) {
 			if (!isRouterMode()) {
-				return detectThinkingSupportWithReason(serverStore.props?.chat_template ?? '');
+				return reasoningSupportDetailsFromProps(serverStore.props);
 			}
 			return { supported: false, reason: 'No model selected' };
 		}
 		if (isRouterMode() && !this.modelPropsCache.get(modelId)) {
 			this.fetchModelProps(modelId);
 		}
-		const props = this.getModelProps(modelId);
-		return detectThinkingSupportWithReason(props?.chat_template ?? '');
+		return reasoningSupportDetailsFromProps(this.getModelProps(modelId));
 	}
 
 	/**
@@ -372,6 +426,7 @@ class ModelsStore {
 				capabilities: rawCapabilities.filter((value: unknown): value is string => Boolean(value)),
 				details: details?.details,
 				meta: item.meta ?? null,
+				pricing: item.pricing ?? null,
 				parsedId: ModelsService.parseModelId(modelId),
 				aliases: item.aliases ?? [],
 				tags: item.tags ?? []

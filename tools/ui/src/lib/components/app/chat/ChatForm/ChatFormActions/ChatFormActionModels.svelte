@@ -143,16 +143,23 @@
 	$effect(() => {
 		if (!isRouter) {
 			isSelectedModelInCache = true;
+			return;
+		}
+
+		// Validate the model that will actually be used for the next send. An
+		// explicit picker choice wins over the conversation's last-used model
+		// (mirrors chat.svelte.ts streamChatCompletion → `selectedModelName() ||
+		// conversationModel`). Checking the picker choice first means a followup
+		// with a freshly selected, available model is allowed even when an earlier
+		// turn used a model that is no longer in the catalog.
+		const currentModelId = selectedModelId();
+
+		if (currentModelId) {
+			isSelectedModelInCache = modelOptions().some((option) => option.id === currentModelId);
 		} else if (conversationModel) {
 			isSelectedModelInCache = modelOptions().some((option) => option.model === conversationModel);
 		} else {
-			const currentModelId = selectedModelId();
-
-			if (!currentModelId) {
-				isSelectedModelInCache = false;
-			} else {
-				isSelectedModelInCache = modelOptions().some((option) => option.id === currentModelId);
-			}
+			isSelectedModelInCache = false;
 		}
 	});
 
