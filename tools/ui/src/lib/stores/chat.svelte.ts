@@ -1610,6 +1610,12 @@ class ChatStore {
 		if (!result) result = this.getMessageByIdWithRole(messageId, MessageRole.SYSTEM);
 		if (!result) return;
 		const { message: msg, index: idx } = result;
+		// Capture the model in effect before branching: the new branch's path no
+		// longer contains the previous assistant response, so the conversation
+		// model can't be recovered from it after the branch switch.
+		const modelForResend =
+			selectedModelName() ||
+			this.getConversationModel(conversationsStore.activeMessages as DatabaseMessage[]);
 		try {
 			const allMessages = await conversationsStore.getConversationMessages(activeConv.id);
 			const rootMessage = allMessages.find((m) => m.type === 'root' && m.parent === null);
@@ -1667,13 +1673,16 @@ class ChatStore {
 				);
 			await conversationsStore.refreshActiveMessages();
 			if (msg.role === MessageRole.USER)
-				await this.generateResponseForMessage(messageIdForResponse);
+				await this.generateResponseForMessage(messageIdForResponse, modelForResend);
 		} catch (error) {
 			console.error('Failed to edit message with branching:', error);
 		}
 	}
 
-	private async generateResponseForMessage(userMessageId: string): Promise<void> {
+	private async generateResponseForMessage(
+		userMessageId: string,
+		modelOverride?: string | null
+	): Promise<void> {
 		const activeConv = conversationsStore.activeConversation;
 		if (!activeConv) return;
 
@@ -1688,6 +1697,9 @@ class ChatStore {
 				userMessageId,
 				false
 			) as DatabaseMessage[];
+			// Seed the placeholder with the model captured before branching so the
+			// conversation-model fallback (selector display, follow-up sends) doesn't
+			// see a gap until the stream reports the resolved model.
 			const assistantMessage = await DatabaseService.createMessageBranch(
 				{
 					convId: activeConv.id,
@@ -1697,14 +1709,20 @@ class ChatStore {
 					content: '',
 					toolCalls: '',
 					children: [],
-					model: null
+					model: modelOverride ?? null
 				},
 				userMessageId
 			);
 
 			conversationsStore.addMessageToActive(assistantMessage);
 
-			await this.streamChatCompletion(conversationPath, assistantMessage);
+			await this.streamChatCompletion(
+				conversationPath,
+				assistantMessage,
+				undefined,
+				undefined,
+				modelOverride
+			);
 		} catch (error) {
 			console.error('Failed to generate response:', error);
 			this.setChatLoading(activeConv.id, false);

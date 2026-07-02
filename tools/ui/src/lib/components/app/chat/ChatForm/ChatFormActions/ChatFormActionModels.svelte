@@ -59,6 +59,10 @@
 
 	$effect(() => {
 		if (conversationModel && conversationModel !== lastSyncedConversationModel) {
+			// While the model list is still loading, an empty modelOptions() would
+			// wrongly clear the selection below — and marking the model as synced
+			// here would prevent the re-sync once the list arrives. Wait it out.
+			if (modelOptions().length === 0) return;
 			if (modelOptions().some((m) => m.model === conversationModel)) {
 				modelsStore.selectedModelName = conversationModel;
 				modelsStore.selectModelByName(conversationModel);
@@ -72,7 +76,12 @@
 			!modelsStore.selectedModelId &&
 			modelsStore.loadedModelIds.length > 0 &&
 			activeMessages().length > 0 &&
-			!conversationModel
+			!conversationModel &&
+			// Only seed brand-new conversations. A conversation that already synced
+			// a model passes through a transient no-assistant state while an edited
+			// message is re-branched — auto-picking here would flash the first
+			// (default) model in the selector.
+			lastSyncedConversationModel === null
 		) {
 			lastSyncedConversationModel = null;
 			const first = modelOptions().find((m) => modelsStore.loadedModelIds.includes(m.model));
