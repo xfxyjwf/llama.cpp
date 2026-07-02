@@ -71,7 +71,8 @@ export async function parseFilesToMessageExtras(
 					type: AttachmentType.IMAGE,
 					name: file.name,
 					size: file.size,
-					base64Url
+					base64Url,
+					url: file.url
 				});
 			}
 		} else if (getFileTypeCategory(file.type) === FileTypeCategory.AUDIO) {

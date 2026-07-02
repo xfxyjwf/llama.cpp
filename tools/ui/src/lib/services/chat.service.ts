@@ -998,6 +998,16 @@ export class ChatService {
 			// untouched images pass through as is
 			const base64Url = await capImageDataURLSize(image.base64Url, maxImageResolution);
 
+			// Images uploaded to the proxy server's store have a stable URL; a note
+			// right before the image part lets the model reference it later (the
+			// proxy explains the convention in the system prompt)
+			if (image.url) {
+				contentParts.push({
+					type: ContentPartType.TEXT,
+					text: `[Attached image "${image.name}" — URL: ${image.url}]`
+				});
+			}
+
 			contentParts.push({
 				type: ContentPartType.IMAGE_URL,
 				image_url: { url: base64Url }

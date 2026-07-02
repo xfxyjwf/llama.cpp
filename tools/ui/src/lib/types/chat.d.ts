@@ -10,6 +10,8 @@ export interface ChatUploadedFile {
 	file: File;
 	preview?: string;
 	textContent?: string;
+	// Stable URL on the proxy server's image store (uploaded at attach time)
+	url?: string;
 	mcpPrompt?: {
 		serverName: string;
 		promptName: string;

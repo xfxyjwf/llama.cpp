@@ -1,17 +1,21 @@
 <script lang="ts">
 	import {
+		Brain,
 		CircleAlert,
+		Eye,
 		Heart,
 		HeartOff,
 		Info,
 		Loader2,
+		Mic,
 		Power,
-		RotateCw
+		RotateCw,
+		Video
 	} from '@lucide/svelte';
 	import { ActionIcon, ModelId } from '$lib/components/app';
 	import type { ModelOption } from '$lib/types/models';
-	import { ServerModelStatus } from '$lib/enums';
-	import { modelsStore, routerModels } from '$lib/stores/models.svelte';
+	import { ModelModality, ServerModelStatus } from '$lib/enums';
+	import { modelsStore, propsCacheVersion, routerModels } from '$lib/stores/models.svelte';
 
 	interface Props {
 		option: ModelOption;
@@ -58,6 +62,25 @@
 		const fmt = (v: number | undefined) => (typeof v === 'number' ? `$${v.toFixed(2)}` : '$?');
 		return `${fmt(p.inputPerM)}/${fmt(p.outputPerM)}`;
 	});
+
+	// Capability icons (modalities + reasoning) resolved from the /props cache,
+	// which fills in asynchronously after the dropdown opens — read
+	// propsCacheVersion so rows re-render as props arrive.
+	let capabilityIcons = $derived.by(() => {
+		propsCacheVersion();
+
+		const icons: { icon: typeof Eye; label: string }[] = [];
+		const modalities = modelsStore.getModelModalitiesArray(option.model);
+		if (modalities.includes(ModelModality.VISION)) icons.push({ icon: Eye, label: 'Vision' });
+		if (modalities.includes(ModelModality.AUDIO)) icons.push({ icon: Mic, label: 'Audio' });
+		if (modalities.includes(ModelModality.VIDEO)) icons.push({ icon: Video, label: 'Video' });
+
+		if (modelsStore.getModelProps(option.model)?.reasoning?.supported) {
+			icons.push({ icon: Brain, label: 'Reasoning' });
+		}
+
+		return icons;
+	});
 </script>
 
 <div
@@ -82,6 +105,16 @@
 		tags={option.tags}
 		class="flex-1"
 	/>
+
+	{#if capabilityIcons.length > 0}
+		<span class="flex shrink-0 items-center gap-1 text-muted-foreground">
+			{#each capabilityIcons as { icon: CapIcon, label } (label)}
+				<span title={label} aria-label={label}>
+					<CapIcon class="h-3 w-3" />
+				</span>
+			{/each}
+		</span>
+	{/if}
 
 	{#if pricingLabel}
 		<span class="shrink-0 text-xs text-muted-foreground tabular-nums" title="Input/output price per million tokens">

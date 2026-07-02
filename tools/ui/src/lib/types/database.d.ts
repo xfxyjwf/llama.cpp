@@ -39,6 +39,9 @@ export interface DatabaseMessageExtraImageFile {
 	name: string;
 	size?: number;
 	base64Url: string;
+	// Stable URL on the proxy server's image store; injected into the prompt as
+	// a bracketed note so the model can reference the image later
+	url?: string;
 }
 
 /**

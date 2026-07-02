@@ -2,7 +2,7 @@ import { isSvgMimeType, svgBase64UrlToPngDataURL } from './svg-to-png';
 import { isWebpMimeType, webpBase64UrlToPngDataURL } from './webp-to-png';
 import { heicFileToJpegDataURL, isHeicMimeType } from './heic-to-jpeg';
 import { FileTypeCategory } from '$lib/enums';
-import { SETTINGS_KEYS } from '$lib/constants';
+import { API_IMAGES, SETTINGS_KEYS } from '$lib/constants';
 import { modelsStore } from '$lib/stores/models.svelte';
 import { settingsStore } from '$lib/stores/settings.svelte';
 import { toast } from 'svelte-sonner';
@@ -21,6 +21,35 @@ function readFileAsDataURL(file: File): Promise<string> {
 		reader.onerror = () => reject(reader.error);
 		reader.readAsDataURL(file);
 	});
+}
+
+/**
+ * Upload an image to the proxy server's content-addressed store and return its
+ * stable URL. Best-effort: on failure the image is attached without a URL (it
+ * still reaches the model as inline base64 data, it just can't be referenced
+ * by URL later).
+ * @param dataUrl - Base64 data URL of the (already normalized) image
+ * @returns Promise resolving to the stable URL, or undefined on failure
+ */
+async function uploadImageToStore(dataUrl: string): Promise<string | undefined> {
+	try {
+		const response = await fetch(API_IMAGES.UPLOAD, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ dataUrl })
+		});
+
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}`);
+		}
+
+		const { url } = await response.json();
+
+		return typeof url === 'string' ? url : undefined;
+	} catch (err) {
+		console.warn('Failed to upload image to server store:', err);
+		return undefined;
+	}
 }
 
 /**
@@ -91,7 +120,10 @@ export async function processFilesToChatUploaded(
 					}
 				}
 
-				results.push({ ...base, preview });
+				// Upload to the server's image store for a stable, referenceable URL
+				const url = await uploadImageToStore(preview);
+
+				results.push({ ...base, preview, url });
 			} else if (getFileTypeCategory(file.type) === FileTypeCategory.PDF) {
 				// Extract text content from PDF for preview
 				try {

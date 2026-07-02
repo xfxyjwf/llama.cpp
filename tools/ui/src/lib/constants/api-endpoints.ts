@@ -15,6 +15,12 @@ export const API_SLOTS = {
 	LIST: './slots'
 };
 
+// proxy-server image store: attached images are uploaded once and referenced
+// by the stable URL the server returns (see process-uploaded-files.ts)
+export const API_IMAGES = {
+	UPLOAD: '/images'
+};
+
 export const API_TOOLS = {
 	LIST: '/tools',
 	EXECUTE: '/tools'

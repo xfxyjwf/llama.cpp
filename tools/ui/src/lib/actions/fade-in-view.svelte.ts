@@ -35,7 +35,7 @@ export function fadeInView(
 					}
 				}
 			},
-			{ threshold: 0.05 }
+			{ threshold: 0 }
 		);
 
 		observer.observe(node);
