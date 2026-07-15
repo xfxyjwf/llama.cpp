@@ -309,6 +309,11 @@ export const SVELTEKIT_PWA_OPTIONS: SvelteKitPWAOptions = {
 		globIgnores: GLOB_IGNORES,
 		maximumFileSizeToCacheInBytes: CACHE_SETTINGS.MAX_FILE_SIZE_BYTES,
 
+		// /images/* is a server route (content-addressed image store in the myllmui
+		// proxy), not a static asset: without this, the navigation fallback answers
+		// direct navigations to an image URL with the precached index.html.
+		navigateFallbackDenylist: [/^\/images\//],
+
 		// Runtime caching for API calls - use NetworkFirst so APIs are always fresh
 		runtimeCaching: [
 			{
